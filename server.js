@@ -43,6 +43,7 @@ const db = mysql.createConnection({
   }
 });
 
+
 db.connect((err) => {
   if (err) console.error('❌ เชื่อมต่อ DB ไม่สำเร็จ:', err);
   else console.log('✅ เชื่อมต่อฐานข้อมูลสำเร็จ!');
@@ -60,6 +61,29 @@ const authenticate = (req, res, next) => {
         next();
     });
 };
+app.delete('/api/announcements/:id', authenticate, (req, res) => {
+    const { id } = req.params;
+    db.query("DELETE FROM announcements WHERE id = ?", [id], (err, result) => {
+        if (err) return res.status(500).json({ error: "ลบไม่ได้" });
+        res.json({ message: "ลบสำเร็จ" });
+    });
+});
+
+// API สำหรับแก้ไขข้อมูล (Update)
+app.put('/api/announcements/:id', authenticate, upload.single('document'), (req, res) => {
+    const { id } = req.params;
+    const { title, category_id, description } = req.body;
+    
+    // ถ้ามีการอัปโหลดไฟล์ใหม่ ให้ใช้ไฟล์ใหม่ ถ้าไม่มีให้ใช้ค่าเดิม (กรณีนี้อาจต้องดึงค่าเดิมมาเช็ค)
+    const document_url = req.file ? req.file.filename : req.body.old_document_url;
+
+    const sql = `UPDATE announcements SET title = ?, category_id = ?, description = ?, document_url = ? WHERE id = ?`;
+    
+    db.query(sql, [title, category_id, description, document_url, id], (err, result) => {
+        if (err) return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการแก้ไข' });
+        res.json({ message: 'แก้ไขข้อมูลสำเร็จ!' });
+    });
+});
 
 // 5. API Endpoints
 app.post('/api/login', (req, res) => {
