@@ -5,6 +5,8 @@ const mysql = require('mysql2');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
+
+
 // ใช้อ่านไฟล์ .env ถ้ามีในเครื่อง (สำหรับรันในเครื่อง)
 require('dotenv').config();
 
@@ -13,6 +15,12 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(cors({
+  origin: "https://nanpolice-frontend.vercel.app", // 2. ระบุที่อยู่ของเว็บคุณตรงนี้
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 
 // 3. ตั้งค่าโฟลเดอร์เก็บไฟล์อัปโหลด
 const storage = multer.diskStorage({
