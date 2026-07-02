@@ -1,28 +1,26 @@
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // นำเข้าเพียงครั้งเดียว
 const multer = require('multer');
 const mysql = require('mysql2');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
-
-
-// ใช้อ่านไฟล์ .env ถ้ามีในเครื่อง (สำหรับรันในเครื่อง)
+// ใช้อ่านไฟล์ .env ถ้ามีในเครื่อง
 require('dotenv').config();
 
 const SECRET_KEY = process.env.SECRET_KEY || 'your_secret_key';
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-
+// 1. ตั้งค่า CORS (ระบุให้ Vercel เข้าถึงได้)
 app.use(cors({
-  origin: "https://nanpolice-frontend.vercel.app", // 2. ระบุที่อยู่ของเว็บคุณตรงนี้
+  origin: "https://nanpolice-frontend.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
-// 3. ตั้งค่าโฟลเดอร์เก็บไฟล์อัปโหลด
+app.use(express.json());
+
+// 2. ตั้งค่าโฟลเดอร์เก็บไฟล์อัปโหลด
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
@@ -33,7 +31,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// 4. เชื่อมต่อฐานข้อมูล (ดึงค่าจาก Environment Variables)
+// 3. เชื่อมต่อฐานข้อมูล
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -41,7 +39,7 @@ const db = mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   ssl: {
-    rejectUnauthorized: false // จำเป็นต้องมีสำหรับ Aiven
+    rejectUnauthorized: false
   }
 });
 
@@ -50,17 +48,20 @@ db.connect((err) => {
   else console.log('✅ เชื่อมต่อฐานข้อมูลสำเร็จ!');
 });
 
-// 5. Middleware ตรวจสอบสิทธิ์
+// 4. Middleware ตรวจสอบสิทธิ์
 const authenticate = (req, res, next) => {
-    const token = req.headers['authorization'];
+    const authHeader = req.headers['authorization'];
+    // ตรวจสอบว่ามี Token ส่งมาแบบ Bearer หรือไม่
+    const token = authHeader && authHeader.split(' ')[1]; 
     if (!token) return res.status(403).json({ message: 'ไม่มีสิทธิ์เข้าถึง' });
+    
     jwt.verify(token, SECRET_KEY, (err, decoded) => {
         if (err) return res.status(403).json({ message: 'Token หมดอายุ' });
         next();
     });
 };
 
-// 6. API Endpoints
+// 5. API Endpoints
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (username === 'admin' && password === '1234') { 
@@ -89,9 +90,10 @@ app.get('/api/announcements', (req, res) => {
     });
 });
 
+// ให้บริการไฟล์อัปโหลด
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// 7. รันเซิร์ฟเวอร์
+// 6. รันเซิร์ฟเวอร์
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
